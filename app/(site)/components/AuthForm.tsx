@@ -1,15 +1,16 @@
-"use client";
+'use client';
 
-import { useSession } from "next-auth/react";
+import axios from "axios";
+import { signIn, useSession } from 'next-auth/react';
+import { useCallback, useEffect, useState } from 'react';
+import { BsGithub, BsGoogle  } from 'react-icons/bs';
+import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
-import Input from "@/app/components/inputs/Input"
-import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
-import Button from "@/app/components/Button/Buttons";
-import AuthSocialButton from "./AuthSocialButton";
-import { BsGithub } from "react-icons/bs"
-import axios from "axios"
-import toast from "react-hot-toast";
+
+import Input from "@/app/components/inputs/Input";
+import AuthSocialButton from './AuthSocialButton';
+import Button from "@/app/components/Button/Button";
+import { toast } from "react-hot-toast";
 
 type Variant = 'LOGIN' | 'REGISTER';
 
@@ -19,56 +20,104 @@ const AuthForm = () => {
   const [variant, setVariant] = useState<Variant>('LOGIN');
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    if (session?.status === 'authenticated') {
+      router.push('/conversations')
+    }
+  }, [session?.status, router]);
+
+  const toggleVariant = useCallback(() => {
+    if (variant === 'LOGIN') {
+      setVariant('REGISTER');
+    } else {
+      setVariant('LOGIN');
+    }
+  }, [variant]);
+
   const {
     register,
     handleSubmit,
     formState: {
-      errors
-      }
-    } = useForm<FieldValues>({
-      defaultValues: {
-        name: '',
-        email: '',
-        password: ''
-      }
-  })
-
-  const toggleVariant = useCallback(() => {
-    if(variant === 'LOGIN') {
-      setVariant("REGISTER")
-    } else {
-      setVariant("LOGIN")
+      errors,
     }
-  }, [variant])
+  } = useForm<FieldValues>({
+    defaultValues: {
+      name: '',
+      email: '',
+      password: ''
+    }
+  });
 
   const onSubmit: SubmitHandler<FieldValues> = (data) => {
-    console.log(data)
+    setIsLoading(true);
+  
+    if (variant === 'REGISTER') {
+      axios.post('/api/register', data)
+      .then(() => signIn('credentials', {
+        redirect: false,
+        ...data,
+      }))
+      .then((callback) => {
+        if (callback?.error) {
+          toast.error('Invalid credentials!');
+        }
 
-    setIsLoading(true)
-
-    if(variant === "LOGIN") {
-      
+        if (callback?.ok) {
+          router.push('/conversations')
+        }
+      })
+      .catch(() => toast.error('Something went wrong!'))
+      .finally(() => setIsLoading(false))
     }
 
+    if (variant === 'LOGIN') {
+      signIn('credentials', {
+        redirect: false,
+        ...data,
+      })
+      .then((callback) => {
+        if (callback?.error) {
+          toast.error('Invalid credentials!');
+        }
 
-    if(variant === "REGISTER") {
-      console.log(data, 54)
-      axios.post('/api/register', data)
-      .catch(() => toast.error("Something went wrong!"))
+        if (callback?.ok) {
+          router.push('/conversations')
+        }
+      })
       .finally(() => setIsLoading(false))
     }
   }
 
   const socialAction = (action: string) => {
-      console.log(action)
-      setIsLoading(true)
-  }
+    setIsLoading(true);
 
-  return (
+    signIn(action, { redirect: false })
+      .then((callback) => {
+        if (callback?.error) {
+          toast.error('Invalid credentials!');
+        }
+
+        if (callback?.ok) {
+          router.push('/conversations')
+        }
+      })
+      .finally(() => setIsLoading(false));
+  } 
+
+  return ( 
     <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div className="bg-white px-4 py-8 shadow sm:rounded-lg sm:px-10">
-        <form
-          className="space-y-6"
+      <div 
+        className="
+        bg-white
+          px-4
+          py-8
+          shadow
+          sm:rounded-lg
+          sm:px-10
+        "
+      >
+        <form 
+          className="space-y-6" 
           onSubmit={handleSubmit(onSubmit)}
         >
           {variant === 'REGISTER' && (
@@ -81,22 +130,22 @@ const AuthForm = () => {
               label="Name"
             />
           )}
-          <Input
+          <Input 
             disabled={isLoading}
             register={register}
             errors={errors}
             required
-            id="email"
-            label="Email address"
+            id="email" 
+            label="Email address" 
             type="email"
           />
-          <Input
+          <Input 
             disabled={isLoading}
             register={register}
             errors={errors}
             required
-            id="password"
-            label="Password"
+            id="password" 
+            label="Password" 
             type="password"
           />
           <div>
@@ -106,12 +155,19 @@ const AuthForm = () => {
           </div>
         </form>
 
-        <div className='mt-6'>
+        <div className="mt-6">
           <div className="relative">
-            <div className="absolute inset-0 flex items-center">
+            <div 
+              className="
+                absolute 
+                inset-0 
+                flex 
+                items-center
+              "
+            >
               <div className="w-full border-t border-gray-300" />
             </div>
-            <div className="relative flex justify-center text-center">
+            <div className="relative flex justify-center text-sm">
               <span className="bg-white px-2 text-gray-500">
                 Or continue with
               </span>
@@ -119,25 +175,40 @@ const AuthForm = () => {
           </div>
 
           <div className="mt-6 flex gap-2">
-            <AuthSocialButton icon={BsGithub} onClick={() => socialAction('github')}/>
-            <AuthSocialButton icon={BsGithub} onClick={() => socialAction('google')}/>
+            <AuthSocialButton 
+              icon={BsGithub} 
+              onClick={() => socialAction('github')} 
+            />
+            <AuthSocialButton 
+              icon={BsGoogle} 
+              onClick={() => socialAction('google')} 
+            />
           </div>
         </div>
-
-        <div className="flex gap-2 justify-center text-sm mt-6 px-2 text-gray-500">
+        <div 
+          className="
+            flex 
+            gap-2 
+            justify-center 
+            text-sm 
+            mt-6 
+            px-2 
+            text-gray-500
+          "
+        >
           <div>
-            {variant === "LOGIN" ? "New to Messenger?": "Already have an account?"}
+            {variant === 'LOGIN' ? 'New to Messenger?' : 'Already have an account?'} 
           </div>
-          <div
-            onClick={toggleVariant}
-            className="underlien cursor-pointer"
+          <div 
+            onClick={toggleVariant} 
+            className="underline cursor-pointer"
           >
-            {variant === "LOGIN" ? "Create an Account": "Login"}
+            {variant === 'LOGIN' ? 'Create an account' : 'Login'}
           </div>
         </div>
-
       </div>
     </div>
-  )
+  );
 }
+ 
 export default AuthForm;

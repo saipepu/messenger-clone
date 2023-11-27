@@ -27,7 +27,7 @@ const Input: React.FC<InputProps> = ({
   disabled,
 }) => {
 
-  console.log(register(id, { required }))
+  // console.log(register(id, { required }))
   return (
     <div>
       <label
